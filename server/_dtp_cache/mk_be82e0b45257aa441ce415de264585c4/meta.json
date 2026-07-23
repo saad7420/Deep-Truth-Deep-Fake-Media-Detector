@@ -1,0 +1,16 @@
+{
+  "media_key": "mk_be82e0b45257aa441ce415de264585c4",
+  "source_path": "C:\\Users\\Engineer\\Desktop\\Web app\\uploads\\8b10ebe8c2db498485309fdeafc055c8.mp4",
+  "media_kind": "video",
+  "duration_seconds": 35.48,
+  "completed": {
+    "video": true
+  },
+  "extra": {
+    "video": {
+      "num_frames": 16,
+      "n_face_detected": 0,
+      "has_face_branch": false
+    }
+  }
+}

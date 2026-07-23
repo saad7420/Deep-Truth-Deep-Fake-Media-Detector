@@ -250,12 +250,12 @@ async def get_case(case_id: str):
     """Fetch a single case including its analysis results."""
     db = await get_db()
     try:
-        async with db.execute("SELECT * FROM cases WHERE id = ?", (case_id,)) as cur:
+        async with db.execute("SELECT * FROM cases WHERE case_id = ?", (case_id,)) as cur:
             row = await cur.fetchone()
         if row is None:
             raise HTTPException(404, f"Case '{case_id}' not found.")
         row_dict = _row_to_dict(row)
-        results = await _fetch_analysis(db, case_id)
+        results = await _fetch_analysis(db, row_dict["id"])
     finally:
         await db.close()
 
@@ -267,9 +267,11 @@ async def update_case(case_id: str, body: CaseUpdate):
     """Partially update a case (title, status, scores, notes)."""
     db = await get_db()
     try:
-        async with db.execute("SELECT id FROM cases WHERE id = ?", (case_id,)) as cur:
-            if await cur.fetchone() is None:
+        async with db.execute("SELECT id FROM cases WHERE case_id = ?", (case_id,)) as cur:
+            found = await cur.fetchone()
+            if found is None:
                 raise HTTPException(404, f"Case '{case_id}' not found.")
+            internal_id = found["id"]
 
         updates, vals = [], []
         if body.title is not None:
@@ -287,13 +289,13 @@ async def update_case(case_id: str, body: CaseUpdate):
             updates.append("updated_at = datetime('now')")
             await db.execute(
                 f"UPDATE cases SET {', '.join(updates)} WHERE id = ?",
-                vals + [case_id],
+                vals + [internal_id],
             )
             await db.commit()
 
-        async with db.execute("SELECT * FROM cases WHERE id = ?", (case_id,)) as cur:
+        async with db.execute("SELECT * FROM cases WHERE id = ?", (internal_id,)) as cur:
             row = _row_to_dict(await cur.fetchone())
-        results = await _fetch_analysis(db, case_id)
+        results = await _fetch_analysis(db, internal_id)
     finally:
         await db.close()
 
@@ -305,7 +307,7 @@ async def delete_case(case_id: str):
     """Permanently delete a case and its analysis results."""
     db = await get_db()
     try:
-        async with db.execute("SELECT id, file_url FROM cases WHERE id = ?", (case_id,)) as cur:
+        async with db.execute("SELECT id, file_url FROM cases WHERE case_id = ?", (case_id,)) as cur:
             row = await cur.fetchone()
         if row is None:
             raise HTTPException(404, f"Case '{case_id}' not found.")
@@ -317,7 +319,7 @@ async def delete_case(case_id: str):
             if fpath.exists():
                 fpath.unlink(missing_ok=True)
 
-        await db.execute("DELETE FROM cases WHERE id = ?", (case_id,))
+        await db.execute("DELETE FROM cases WHERE id = ?", (row["id"],))
         await db.commit()
     finally:
         await db.close()
